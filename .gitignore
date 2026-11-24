@@ -1,0 +1,6 @@
+entree/*
+!entree/.gitkeep
+sortie/*
+!sortie/.gitkeep
+__pycache__/
+~$*
