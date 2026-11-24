@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Factu — essai et contrôle des tendances</title>
+<style>
+  :root {
+    --fond: #f4f6f8; --carte: #ffffff; --texte: #1f2933; --doux: #5b6b7b; --ligne: #d9e0e7;
+    --accent: #0f6e7a; --accent-fonce: #0b545d; --accent-clair: #e3f2f3;
+    --ok: #1d7a46; --alerte: #a15c00; --erreur: #b42318;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.5 "Segoe UI", system-ui, -apple-system, sans-serif; background: var(--fond); color: var(--texte); }
+  main { max-width: 880px; margin: 0 auto; padding: 32px 20px 60px; }
+  h1 { font-size: 24px; margin: 0 0 4px; }
+  .sous { color: var(--doux); margin: 0 0 24px; }
+  .carte { background: var(--carte); border: 1px solid var(--ligne); border-radius: 10px; padding: 20px 22px; margin-bottom: 16px; }
+  .etape { display: flex; gap: 12px; align-items: baseline; margin-bottom: 10px; }
+  .num { flex: 0 0 26px; height: 26px; border-radius: 50%; background: var(--accent); color: #fff; font-weight: 600; display: grid; place-items: center; font-size: 14px; }
+  .etape h2 { font-size: 17px; margin: 0; }
+  .aide { color: var(--doux); font-size: 14px; margin: 2px 0 12px 38px; }
+  #zone { margin-left: 38px; border: 2px dashed var(--ligne); border-radius: 10px; padding: 26px; text-align: center; color: var(--doux); transition: .15s; }
+  #zone.survol { border-color: var(--accent); background: var(--accent-clair); color: var(--accent-fonce); }
+  .boutons { display: flex; gap: 10px; justify-content: center; margin-top: 12px; flex-wrap: wrap; }
+  button, .bouton { font: inherit; border-radius: 7px; border: 1px solid var(--accent); background: #fff; color: var(--accent); padding: 8px 16px; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; }
+  button:hover, .bouton:hover { background: var(--accent-clair); }
+  button.principal { background: var(--accent); color: #fff; font-weight: 600; padding: 10px 22px; }
+  button.principal:hover { background: var(--accent-fonce); }
+  button:disabled { opacity: .5; cursor: default; }
+  #liste { margin: 14px 0 0 38px; padding: 0; list-style: none; }
+  #liste li { display: flex; justify-content: space-between; gap: 10px; padding: 6px 10px; border-bottom: 1px solid var(--ligne); font-size: 14px; }
+  #liste li:last-child { border-bottom: 0; }
+  #liste .taille { color: var(--doux); }
+  #liste button { border: 0; padding: 0 6px; color: var(--doux); }
+  .ligne-lot { margin-left: 38px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  input[type=number] { font: inherit; width: 90px; padding: 7px 9px; border: 1px solid var(--ligne); border-radius: 7px; }
+  #etat { margin: 14px 0 0 38px; font-weight: 600; min-height: 1.5em; }
+  #etat.erreur { color: var(--erreur); }
+  #etat.ok { color: var(--ok); }
+  .barre { margin: 8px 0 0 38px; height: 6px; background: var(--ligne); border-radius: 3px; overflow: hidden; display: none; }
+  .barre span { display: block; height: 100%; width: 30%; background: var(--accent); animation: va 1.2s ease-in-out infinite; }
+  @keyframes va { 0% { margin-left: -30%; } 100% { margin-left: 100%; } }
+  #resultats { margin: 14px 0 0 38px; display: flex; gap: 10px; flex-wrap: wrap; }
+  pre#journal { margin: 14px 0 0 38px; background: #0f1720; color: #dfe7ee; border-radius: 8px; padding: 14px 16px; font: 12.5px/1.5 Consolas, "Cascadia Mono", monospace; white-space: pre-wrap; max-height: 420px; overflow: auto; display: none; }
+  .note { font-size: 13px; color: var(--doux); margin: 20px 0 0; }
+  .note b { color: var(--texte); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Factu</h1>
+  <p class="sous">Essai mis en forme et contrôle des tendances d'un lot EPN, à partir des exports bruts.</p>
+
+  <section class="carte">
+    <div class="etape"><span class="num">1</span><h2>Dépose les fichiers du lot</h2></div>
+    <p class="aide">Exports Excel ou CSV, noms libres : JDV, listing clients, contrôle factu, factures tous états,
+      PDI en anomalie, population totale, abonnements sans facture (avec « sans » dans le nom), déchargement M2A.
+      Ajoute aussi <b>le contrôle des tendances de l'an dernier</b> du même lot pour la comparaison.</p>
+    <div id="zone">
+      Glisse les fichiers ici
+      <div class="boutons">
+        <button type="button" id="choisir">Choisir des fichiers</button>
+        <button type="button" id="choisirDossier">Choisir un dossier</button>
+      </div>
+      <input type="file" id="fichiers" multiple accept=".xlsx,.xlsm,.csv,.txt" hidden>
+      <input type="file" id="dossier" webkitdirectory hidden>
+    </div>
+    <ul id="liste"></ul>
+  </section>
+
+  <section class="carte">
+    <div class="etape"><span class="num">2</span><h2>Lance le traitement</h2></div>
+    <p class="aide">Le numéro de lot est lu dans le listing ; ne le remplis que s'il n'est pas trouvé.
+      Compte 30 secondes à 1 minute : la page peut sembler figée pendant le calcul.</p>
+    <div class="ligne-lot">
+      <label for="lot">Lot</label>
+      <input type="number" id="lot" min="1" placeholder="auto">
+      <button type="button" class="principal" id="lancer" disabled>Lancer</button>
+    </div>
+    <div class="barre" id="barre"><span></span></div>
+    <div id="etat"></div>
+  </section>
+
+  <section class="carte">
+    <div class="etape"><span class="num">3</span><h2>Récupère les fichiers</h2></div>
+    <p class="aide">Relis ensuite les commentaires « Validation des évolutions » et remplis les colonnes commentaire / justification de l'essai.
+      <b>Garde le contrôle produit</b> : l'an prochain, tu le déposeras avec les exports pour la comparaison.</p>
+    <div id="resultats"></div>
+    <pre id="journal"></pre>
+  </section>
+
+  <p class="note"><b>Tout reste sur ton ordinateur</b> : les fichiers sont lus et créés dans le navigateur, rien n'est envoyé sur Internet.</p>
+</main>
+
+<script>/*EXCELJS*/</script>
+<script>/*CORE*/</script>
+<script>
+const MODELE_B64 = "/*MODELE*/";
+(function () {
+  const fichiers = new Map();
+  const $ = (id) => document.getElementById(id);
+  const zone = $("zone"), liste = $("liste"), lancer = $("lancer"), etat = $("etat"), journal = $("journal"), resultats = $("resultats"), barre = $("barre");
+
+  function taille(n) { return n > 1e6 ? (n / 1e6).toFixed(1).replace(".", ",") + " Mo" : Math.max(1, Math.round(n / 1e3)) + " Ko"; }
+  function afficher() {
+    liste.innerHTML = "";
+    for (const [nom, f] of fichiers) {
+      const li = document.createElement("li");
+      li.innerHTML = `<span></span><span><span class="taille">${taille(f.size)}</span> <button type="button" title="Retirer">✕</button></span>`;
+      li.firstChild.textContent = nom;
+      li.querySelector("button").onclick = () => { fichiers.delete(nom); afficher(); };
+      liste.appendChild(li);
+    }
+    lancer.disabled = fichiers.size === 0;
+  }
+  function ajouter(list) {
+    for (const f of list) {
+      if (f.name.startsWith("~$") || f.name.startsWith(".")) continue;
+      if (!/\.(xlsx|xlsm|csv|txt)$/i.test(f.name)) continue;
+      fichiers.set(f.webkitRelativePath || f.name, f);
+    }
+    afficher();
+  }
+  $("choisir").onclick = () => $("fichiers").click();
+  $("choisirDossier").onclick = () => $("dossier").click();
+  $("fichiers").onchange = (e) => { ajouter(e.target.files); e.target.value = ""; };
+  $("dossier").onchange = (e) => { ajouter(e.target.files); e.target.value = ""; };
+  ["dragenter", "dragover"].forEach((ev) => zone.addEventListener(ev, (e) => { e.preventDefault(); zone.classList.add("survol"); }));
+  ["dragleave", "drop"].forEach((ev) => zone.addEventListener(ev, (e) => { e.preventDefault(); zone.classList.remove("survol"); }));
+  zone.addEventListener("drop", (e) => ajouter(e.dataTransfer.files));
+  window.addEventListener("dragover", (e) => e.preventDefault());
+  window.addEventListener("drop", (e) => e.preventDefault());
+
+  function b64ToBuffer(b64) {
+    const bin = atob(b64); const out = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+    return out.buffer;
+  }
+  const pause = () => new Promise((r) => setTimeout(r, 30));
+  function lien(nom, data, type) {
+    const url = URL.createObjectURL(new Blob([data], { type }));
+    const a = document.createElement("a");
+    a.href = url; a.download = nom; a.className = "bouton"; a.textContent = "⬇ " + nom;
+    resultats.appendChild(a);
+    return a;
+  }
+
+  lancer.onclick = async () => {
+    lancer.disabled = true; resultats.innerHTML = ""; journal.textContent = ""; journal.style.display = "block";
+    etat.className = ""; etat.textContent = "Lecture des fichiers…"; barre.style.display = "block";
+    await pause();
+    try {
+      const files = [];
+      for (const [nom, f] of fichiers) files.push({ name: f.name, buffer: await f.arrayBuffer() });
+      const res = await Factu.run({
+        ExcelJS, files, template: b64ToBuffer(MODELE_B64), lot: $("lot").value || null,
+        log: (m) => { journal.textContent += m + "\n"; journal.scrollTop = journal.scrollHeight; },
+        progress: async (m) => { etat.textContent = m + "…"; await pause(); },
+      });
+      if (!res.ok) { etat.className = "erreur"; etat.textContent = "Traitement impossible : voir le détail ci-dessous."; return; }
+      const XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+      for (const o of res.outputs) lien(o.name, o.buffer, XLSX);
+      lien(`rapport_LOT_${String(res.lot).padStart(2, "0")}_${res.annee}.txt`, "﻿" + res.rapport.replace(/\n/g, "\r\n"), "text/plain;charset=utf-8");
+      etat.className = "ok"; etat.textContent = "Terminé : télécharge les fichiers ci-dessous.";
+    } catch (e) {
+      console.error(e);
+      etat.className = "erreur"; etat.textContent = "Erreur : " + (e.message || e);
+      journal.textContent += "\n" + (e.stack || e);
+    } finally {
+      barre.style.display = "none"; lancer.disabled = fichiers.size === 0;
+    }
+  };
+})();
+</script>
+</body>
+</html>

@@ -5,14 +5,28 @@ Outil qui prépare automatiquement, pour un lot EPN :
 1. **l'essai** mis en forme comme l'essai 2025 (onglets 04.04, POUR MEDIANE, NON FACT, ANO AVANT CALCUL, TCD LISTING…) ;
 2. **le contrôle des tendances** rempli et comparé à la facturation de l'an dernier.
 
-## Installation (une seule fois)
+## Version la plus simple : `factu.html` (rien à installer)
+
+1. Télécharger le fichier **`factu.html`** et l'ouvrir d'un double-clic (Edge ou Chrome).
+2. Glisser dans la page les exports bruts du lot **et le contrôle des tendances de l'an dernier** du même lot
+   (dossier `historique\LOT_xx\`).
+3. Cliquer sur **Lancer**, puis télécharger l'essai, le contrôle et le rapport.
+
+Tout se passe dans le navigateur : aucune donnée n'est envoyée sur Internet.
+Pour reconstruire la page après une modification : `python html/construire_html.py`.
+
+## Version Python (`lancer.bat`)
+
+Même résultat, avec en plus le rangement automatique dans `historique`.
+
+### Installation (une seule fois)
 
 1. Installer Python depuis https://www.python.org (cocher « Add Python to PATH »).
 2. Récupérer ce dépôt sur le PC :
    `git clone https://github.com/Abassale/Factu`
    (ou bouton vert **Code → Download ZIP** sur GitHub, puis dézipper).
 
-## Utilisation, à chaque lot
+### Utilisation, à chaque lot
 
 1. Vider le dossier `entree`.
 2. Y déposer les exports bruts du lot (Excel `.xlsx` ou `.csv`, noms libres) :
@@ -40,7 +54,8 @@ Pour un lot traité pour la première fois avec l'outil, déposer le contrôle d
 
 ## Contenu
 
-- `outil/` : le programme (`factu.py` lance tout, `lecture.py` reconnaît les exports, `essai.py` et `controle.py` construisent les fichiers).
+- `factu.html` : la page autonome ; ses sources sont dans `html/` (`factu-core.js`, `page.html`, ExcelJS dans `html/vendor`).
+- `outil/` : le programme Python (`factu.py` lance tout, `lecture.py` reconnaît les exports, `essai.py` et `controle.py` construisent les fichiers).
 - `modeles/` : le contrôle des tendances vierge et le modèle rempli du lot 06.
 - `historique/` : les contrôles des années précédentes, par lot.
 - `lots/`, `essais/` : fichiers du lot 12 préparés le 24/11/2026.
